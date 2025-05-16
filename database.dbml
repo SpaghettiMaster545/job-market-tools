@@ -1,0 +1,155 @@
+// Lookup tables
+Table job_board_websites {
+  name        varchar [pk]         // e.g. "justjoin.it"
+  website_url varchar [not null]
+}
+
+Table countries {
+  code    char(2) [pk]             // ISO 3166-1 alpha-2, e.g. "PL", "US"
+  name    varchar [not null]
+}
+
+Table languages {
+  code    varchar [pk]             // e.g. "en", "pl"
+  name    varchar [not null]
+}
+
+Table language_levels {
+  level   varchar [pk]             // e.g. "B1", "C1"
+}
+
+Table experience_levels {
+  level   varchar [pk]             // e.g. "Junior", "Senior"
+}
+
+Table workplace_types {
+  type    varchar [pk]             // e.g. "remote", "office"
+}
+
+Table working_times {
+  type    varchar [pk]             // e.g. "full-time", "part-time"
+}
+
+Table skill_levels {
+  level   integer [pk]             // e.g. 1..5
+}
+
+Table skills {
+  name    varchar [pk]             // e.g. "Python", "React"
+}
+
+Table currencies {
+  code   varchar [pk]       // ISO 4217
+  symbol varchar
+  name   varchar
+}
+
+Table employment_units {
+  unit varchar [pk]         // e.g. "month", "hour"
+}
+
+Table employment_types {
+  type varchar [pk]         // e.g. "gross", "net"
+}
+
+Table offer_salaries {
+  id          integer   [pk, increment]
+  offer_id    integer   [not null, ref: > offers.id]
+  currency    varchar   [not null, ref: > currencies.code]
+  salary_min  integer   [not null]
+  salary_max  integer
+  is_gross    boolean   [not null]
+  unit        varchar   [not null, ref: > employment_units.unit]
+  type        varchar   [not null, ref: > employment_types.type]
+
+  indexes {
+    offer_id
+  }
+}
+
+Table offer_categories {
+  name varchar [pk]
+}
+
+// Core entities
+Table companies {
+  id           integer   [pk, increment]
+  name         varchar   [not null]
+  size         smallint
+  country_code char(2)   [not null, ref: > countries.code]
+  website_url  varchar
+  logo_url     varchar
+}
+
+Table offers {
+  id               integer   [pk, increment]
+  job_board_name   varchar   [not null, ref: > job_board_websites.name]
+  company_id       integer   [not null, ref: > companies.id]
+  title            varchar   [not null]
+  description      text
+  apply_url        varchar   [not null]
+  experience_level varchar   [not null, ref: > experience_levels.level]
+  workplace_type   varchar   [not null, ref: > workplace_types.type]
+  working_time     varchar   [not null, ref: > working_times.type]
+  publish_date     timestamp [not null]
+  expire_date      timestamp [not null]
+  raw_json         jsonb
+  indexes {
+    publish_date
+    (experience_level, publish_date)
+  }
+}
+
+// Join tables
+Table offers_categories {
+  offer_id integer [ref: > offers.id]
+  category_name varchar [ref: > offer_categories.name]
+  indexes {
+    (offer_id, category_name) [pk]
+    (category_name)
+  }
+}
+
+Table offers_languages {
+  offer_id       integer [not null, ref: > offers.id]
+  language_code  varchar [not null, ref: > languages.code]
+  language_level varchar [ref: > language_levels.level]
+  indexes {
+    (offer_id, language_code) [pk]
+  }
+}
+
+Table offers_skills {
+  offer_id    integer [not null, ref: > offers.id]
+  skill_name  varchar [not null, ref: > skills.name]
+  skill_level integer [ref: > skill_levels.level]
+  indexes {
+    (offer_id, skill_name) [pk]
+  }
+}
+
+Table offers_optional_skills {
+  offer_id    integer [not null, ref: > offers.id]
+  skill_name  varchar [not null, ref: > skills.name]
+  skill_level integer [not null, ref: > skill_levels.level]
+  indexes {
+    (offer_id, skill_name) [pk]
+  }
+}
+
+Table offers_locations {
+  offer_id    integer [not null, ref: > offers.id]
+  location_id integer [not null, ref: > locations.id]
+  indexes {
+    (offer_id, location_id) [pk]
+  }
+}
+
+Table locations {
+  id         integer  [pk, increment]
+  country_code char(2) [not null, ref: > countries.code]
+  city       varchar  [not null]
+  street     varchar
+  latitude   decimal  [not null]    // e.g. 52.2297
+  longitude  decimal  [not null]    // fixed spelling
+}
