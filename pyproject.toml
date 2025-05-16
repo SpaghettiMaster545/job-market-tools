@@ -1,0 +1,35 @@
+[project]
+name = "job-market-tools"
+version = "0.1.0"
+description = ""
+authors = [
+    { name = "Banan545", email = "74583115+SpaghettiMaster545@users.noreply.github.com" },
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["requests (>=2.32.3,<3.0.0)"]
+
+[tool.poetry]
+packages = [{ include = "job_market_tools", from = "src" }]
+
+[tool.black]
+# line length black will wrap at (default is 88)
+line-length = 88
+# which Python versions you’re targeting
+target-version = ["py38", "py39"]
+# don’t change string quotes
+skip-string-normalization = false
+
+[tool.flake8]
+# match Black’s wrapping width
+max-line-length = 88
+# Black and flake8 clash on E203 (“whitespace before ‘:’”)—ignore it:
+extend-ignore = ["E203"]
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+flake8 = "^7.2.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
