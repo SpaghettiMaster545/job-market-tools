@@ -9,6 +9,7 @@ class ScraperManager:
         cls = SCRAPER_REGISTRY.get(name)
         if not cls:
             raise ValueError(f"No scraper registered under '{name}'")
+        config.setdefault("name", name)
         self._instances[name] = cls(**config)
 
     def start(self, name: str, interval: float = 60):

@@ -9,12 +9,14 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+LOG_DIR = BASE_DIR / "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -27,7 +29,40 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+        },
+        "offer_file": {
+            "level": "DEBUG",                          # log DEBUG+ here
+            "class": "logging.FileHandler",
+            "filename": str(LOG_DIR / "offer_ingest.log"),
+            "formatter": "standard",
+            # use RotatingFileHandler to avoid giant files
+            "class": "logging.handlers.RotatingFileHandler",
+            "maxBytes": 5*1024*1024,
+            "backupCount": 5,
+        },
+    },
+    "loggers": {
+        # your module’s path
+        "job_market_tools.services.offer_ingest": {
+            "handlers": ["console", "offer_file"],
+            "level": "INFO",   # capture DEBUG+ from create_offer
+            "propagate": False,
+        },
+    },
+}
 # Application definition
 
 INSTALLED_APPS = [

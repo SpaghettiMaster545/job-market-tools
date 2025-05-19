@@ -7,7 +7,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         mgr = ScraperManager()
-        mgr.register("justjoin")
+        mgr.register("justjoin", verbose=True)
         mgr.start("justjoin", 10)
         self.stdout.write("Scraper started. Ctrl-C to stop.")
         try:

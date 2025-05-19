@@ -1,50 +1,79 @@
-# src/job_market_tools/scraper/justjoin.py
-from ..base import BaseScraper, register_scraper
+# src/job_market_tools/scraper/boards/justjoin.py
+from datetime import datetime
 import requests
+from ..resumable import ResumablePagedScraper
+from ..base import register_scraper
 
 @register_scraper("justjoin")
-class JustJoinScraper(BaseScraper):
+class JustJoinScraper(ResumablePagedScraper):
     OFFERS_PAGE_URL = "https://api.justjoin.it/v2/user-panel/offers"
-    OFFER_PAGE_URL = "https://api.justjoin.it/v1/offers/"
+    OFFER_PAGE_URL  = "https://api.justjoin.it/v1/offers/"
 
-    def fetch_offers_page(self, page: int = 1):
-        params = {"page": page} | self.config.get("params", {}).copy()
-        headers = {
-            "Accept": "application/json",
-            "version": "2"
-        } | self.config.get("headers", {}).copy()
-        print(f"Fetching JustJoin offers page {page} with params: {params} and headers: {headers}\n")
-        resp = requests.get(self.OFFERS_PAGE_URL, params=params, headers=headers)
-        print(resp.status_code)
+    # ---------------------- ResumablePagedScraper hooks ------------------
+    def _listing_uid(self, listing):              # ← unique per offer
+        return listing["slug"]
+
+    def _listing_published_at(self, listing):
+        # API returns ISO-8601 with timezone, e.g. "2025-05-18T07:12:02.123Z"
+        return datetime.fromisoformat(listing["publishedAt"].replace("Z", "+00:00"))
+
+    def _total_pages(self):
+        resp = requests.get(
+            self.OFFERS_PAGE_URL,
+            params={"page": 1, "sort": "newest"},
+            headers={"Accept": "application/json", "version": "2"}
+        )
         resp.raise_for_status()
-        offers = resp.json()
-        offers = offers.get("data", [])
-        print(f"Fetched offers from JustJoin {offers}\n")
-        return offers
+        return resp.json()["meta"]["totalPages"]
 
-    def fetch_offer_details(self, offer_ids: list[str]):
-        def fetch_offer(offer_id: str):
-            url = self.OFFER_PAGE_URL + offer_id
-            headers = {
-                "Accept": "application/json",
-                "version": "2"
-            } | self.config.get("headers", {}).copy()
-            print(f"Fetching JustJoin offer details for {offer_id} with headers: {headers}\n")
-            resp = requests.get(url, headers=headers)
+    def _make_offer_payload(self, offer):
+        return {
+            "job_board_name": "justjoin",
+            "company_name":      offer["companyName"],
+            "company_country_code": offer["countryCode"],
+            "title":             offer["title"],
+            "description":       offer["body"],
+            "apply_url":         offer["applyUrl"] or f"https://justjoin.it/job-offer/{offer['slug']}",
+            "experience_level":  offer["experienceLevel"]["label"],
+            "workplace_type":    offer["workplaceType"]["label"],
+            "working_time":      offer["workingTime"]["label"],
+            "publish_date":      offer["publishedAt"],
+            "expire_date":       offer["expiredAt"],
+            "categories":        [offer["category"]["name"]],
+            "skills_required":   [{"name": s["name"], "level": s.get("level")} for s in offer["requiredSkills"]],
+            "skills_optional":   [{"name": s["name"], "level": s.get("level")} for s in offer["niceToHaveSkills"]],
+            "languages":         [{"code": l["code"], "level": l.get("level")} for l in offer["languages"]],
+            "locations":         [{
+                "city": offer["city"],
+                "country_code": offer["countryCode"],
+                "latitude": offer["latitude"],
+                "longitude": offer["longitude"],
+                "street": offer["street"],
+            }],
+            "salaries":          [{
+                "currency": sal["currency"],
+                "min":      sal["from"] if sal["from"] else -1,
+                "max":      sal["to"],
+                "is_gross": sal["gross"],
+                "unit":     sal["unit"],
+                "type":     sal["type"],
+            } for sal in offer["employmentTypes"]],
+            "raw_json": offer,
+        }
+
+    # ---------------------- board-specific fetchers ----------------------
+    def fetch_offers_page(self, page: int = 1):
+        params  = {"page": page, "sort": "newest"} | self.config.get("params", {})
+        headers = {"Accept": "application/json", "version": "2"} | self.config.get("headers", {})
+        resp = requests.get(self.OFFERS_PAGE_URL, params=params, headers=headers)
+        resp.raise_for_status()
+        return resp.json()["data"]
+
+    def fetch_offer_details(self, offer_ids):
+        headers = {"Accept": "application/json", "version": "2"} | self.config.get("headers", {})
+        out = []
+        for oid in offer_ids:
+            resp = requests.get(self.OFFER_PAGE_URL + oid, headers=headers)
             resp.raise_for_status()
-            return resp.json()
-        for offer_id in offer_ids:
-            offer_details = fetch_offer(offer_id)
-            print(f"Fetched details for offer {offer_id}: {offer_details}\n")
-        return offer_details
-
-    def loop(self):
-        # This method would contain the main loop logic for the scraper.
-        # For now, we'll just print a message.
-        print("Running JustJoin scraper loop")
-        offers = self.fetch_offers_page()
-        offer_ids = [offer["slug"] for offer in offers]
-        print(f"Fetched offer IDs: {offer_ids}")
-        offers_details = self.fetch_offer_details(offer_ids)
-        print(f"Fetched offer details: {offers_details}")
-        print("JustJoin scraper loop completed")
+            out.append(resp.json())
+        return out

@@ -2,6 +2,7 @@
 import threading
 import time
 from abc import ABC, abstractmethod
+import traceback
 
 SCRAPER_REGISTRY: dict[str, type["BaseScraper"]] = {}
 
@@ -18,6 +19,19 @@ class BaseScraper(ABC):
         self._thread = None
         self._stop_event = threading.Event()
         self.config = kwargs
+        # ─────────── progress / debug output ───────────
+        # `verbose` defaults to **True** so you get progress messages
+        # out of the box.  Set `verbose=False` when you start a scraper
+        # if you want it silent.
+        self.verbose: bool = kwargs.get("verbose", True)
+
+# ------------------------------------------------------------------— helpers
+    def _log(self, msg: str, *args, **kwargs) -> None:
+        """Centralised printf-style debug printer."""
+        if not self.verbose:
+            return
+        name = self.config.get("name", self.__class__.__name__)
+        print(f"[{name}] " + msg.format(*args, **kwargs))
 
     @abstractmethod
     def fetch_offers_page(self, page: int = 1):
@@ -39,8 +53,21 @@ class BaseScraper(ABC):
             try:
                 self.loop()
             except Exception as e:
-                # you could hook in logging here
-                print(f"[{self.__class__.__name__}] error: {e}")
+                # extract the traceback object
+                tb = e.__traceback__
+                # walk to the last frame in this traceback
+                while tb.tb_next:
+                    tb = tb.tb_next
+                lineno   = tb.tb_lineno
+                filename = tb.tb_frame.f_code.co_filename
+                funcname = tb.tb_frame.f_code.co_name
+
+                self._log(
+                    "ERROR in {func} at {file}:{line}: {err!r}",
+                    func=funcname, file=filename, line=lineno, err=e
+                )
+                # optionally, print full traceback
+                traceback.print_exc()
             finally:
                 time.sleep(interval)
 
@@ -54,7 +81,7 @@ class BaseScraper(ABC):
             target=self._run_loop, args=(interval,), daemon=False
         )
         self._thread.start()
-        print(f"Started {self.__class__.__name__}")
+        self._log("Started scraper (interval={i}s)", i=interval)
 
     def stop(self):
         """Signal the loop to stop and wait for thread to finish."""
@@ -62,7 +89,7 @@ class BaseScraper(ABC):
             return
         self._stop_event.set()
         self._thread.join()
-        print(f"Stopped {self.__class__.__name__}")
+        self._log("Stopped scraper")
 
     def status(self) -> str:
         return "running" if self._thread and self._thread.is_alive() else "stopped"
