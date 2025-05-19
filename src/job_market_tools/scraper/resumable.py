@@ -58,14 +58,14 @@ class ResumablePagedScraper(BaseScraper):
             board_name=jb,                                      # ← PK column name
             defaults={                                          # first run
                 "last_uid":     "",
-                "last_seen_at": timezone.make_aware(datetime.min, dt_timezone.utc),
+                "last_seen_at": self._aware(datetime.min),
                 "mode":         "backfill",
                 "updated_at":   timezone.now(),
             },
         )
-        # normalise “None” the very first time
-        if state.last_seen_at is None:
-            state.last_seen_at = timezone.make_aware(datetime.min)
+        # --- normalise whatever came from the DB -----------------
+        state.last_seen_at = self._aware(state.last_seen_at or datetime.min)
+        
         return state
 
     def _save_state(
