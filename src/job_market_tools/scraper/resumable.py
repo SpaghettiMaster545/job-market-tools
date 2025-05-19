@@ -1,6 +1,6 @@
 # src/job_market_tools/scraper/resumable.py
 import math, time
-from datetime import datetime
+from datetime import datetime, timezone as dt_timezone
 from typing import List, Dict
 from django.utils import timezone
 
@@ -50,7 +50,7 @@ class ResumablePagedScraper(BaseScraper):
             board_name=jb,                                      # ← PK column name
             defaults={                                          # first run
                 "last_uid":     "",
-                "last_seen_at": timezone.make_aware(datetime.min),
+                "last_seen_at": timezone.make_aware(datetime.min, dt_timezone.utc),
                 "mode":         "backfill",
                 "updated_at":   timezone.now(),
             },
