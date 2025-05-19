@@ -9,7 +9,7 @@ from django.db import transaction
 from django.contrib.postgres.search import TrigramSimilarity
 from rapidfuzz import fuzz
 
-from ..models.db_models import Companies, Skills, OfferCategories
+from ..db_schema.database import Companies, Skills, OfferCategories
 from .lookups import country
 
 # ——————————————————————————————————————————————————————————————

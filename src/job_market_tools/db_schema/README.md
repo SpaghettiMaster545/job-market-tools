@@ -50,18 +50,26 @@ docker-compose up -d db
 docker-compose exec db \
   psql -U postgres -d your_db_name -f src/job_market_tools/db_schema/schema.sql
 ```
+## 3. Create Indexes and Extensions
+After applying the schema, create any additional indexes or extensions needed for your application. Currently, we need the `pg_trgm` extension for fuzzy searching and a GIN index on the `name` field of the `companies` table.
 
-## 3. Reverse-Engineer Django Models
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS companies_name_trgm_idx
+  ON companies USING gin (name gin_trgm_ops);
+```
+
+## 4. Reverse-Engineer Django Models
 
 1. Configure `DATABASES` in `jobboard_project/settings.py` to point at the sandbox database.
 2. Run Django's inspectdb to dump models:
 
    ```bash
-   python manage.py inspectdb --database default --include-partitions --include-views > src/job_market_tools/models/db_models.py
+   python manage.py inspectdb --database default --include-partitions --include-views > src/job_market_tools/db_schema/database.py
    ```
 3. Review `db_models.py`—it contains all tables as Django model stubs.
 
-## 4. Refine and Organize Models
+## 5. Refine and Organize Models
 
 * **Split** classes from `db_models.py` into domain files under `models/`:
 
@@ -73,14 +81,14 @@ docker-compose exec db \
 
 * **Adjust** field options (`null=True`, `blank=True`), add `__str__()` methods, indexes, and verbose names as needed.
 
-## 5. Create and Run Migrations
+## 6. Create and Run Migrations
 
 ```bash
 python manage.py makemigrations job_market_tools
 python manage.py migrate
 ```
 
-## 6. Load Lookup Fixtures
+## 7. Load Lookup Fixtures
 
 Place JSON/YAML fixtures in `src/job_market_tools/fixtures/`, e.g. `countries.json`, then load:
 

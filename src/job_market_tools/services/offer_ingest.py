@@ -6,7 +6,7 @@ from typing import Any, Dict, Mapping
 
 from django.db import transaction
 
-from ..models.db_models import (
+from ..db_schema.database import (
     Offers,
     OffersCategories,
     OffersSkills,

@@ -12,7 +12,7 @@ from typing import Type
 from django.db import transaction
 from django.db.models import Model
 
-from ..models.db_models import (           # adjust if you later split models
+from ..db_schema.database import (           # adjust if you later split models
     Countries,
     Languages,
     LanguageLevels,

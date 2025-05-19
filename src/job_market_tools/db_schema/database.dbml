@@ -4,6 +4,19 @@ Table job_board_websites {
   website_url varchar [not null]
 }
 
+enum scraping_mode {
+  backfill
+  monitor
+}
+
+Table scraper_state{
+  board_name varchar [pk, ref: - job_board_websites.name]
+  last_uid varchar
+  last_seen_at timestamp
+  mode scraping_mode
+  updated_at timestamp
+}
+
 Table countries {
   code    char(2) [pk]             // ISO 3166-1 alpha-2, e.g. "PL", "US"
   name    varchar [not null]
@@ -52,6 +65,7 @@ Table employment_types {
   type varchar [pk]         // e.g. "gross", "net"
 }
 
+// renamed from employment_options
 Table offer_salaries {
   id          integer   [pk, increment]
   offer_id    integer   [not null, ref: > offers.id]
