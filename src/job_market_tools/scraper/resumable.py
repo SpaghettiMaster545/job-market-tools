@@ -23,6 +23,14 @@ class ResumablePagedScraper(BaseScraper):
     """
 
     # ------------------------------------------------------------------— helpers
+    @staticmethod
+    def _aware(dt: datetime) -> datetime:
+        """
+        Ensure *dt* is timezone-aware (UTC).  Treat naive values as UTC.
+        """
+        if timezone.is_naive(dt):
+            return timezone.make_aware(dt, dt_timezone.utc)
+        return dt
     # BOARD IMPLEMENTATION MUST OVERRIDE ↓↓↓
     def _listing_uid(self, listing: Dict) -> str: ...
     def _listing_published_at(self, listing: Dict) -> datetime: ...
