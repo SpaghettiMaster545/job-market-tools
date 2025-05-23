@@ -20,7 +20,7 @@ class JustJoinScraper(ResumablePagedScraper):
     def _total_pages(self):
         resp = requests.get(
             self.OFFERS_PAGE_URL,
-            params={"page": 1, "sort": "newest"},
+            params={"page": 1, "sortBy": "published", "orderBy": "DESC"},
             headers={"Accept": "application/json", "version": "2"}
         )
         resp.raise_for_status()
