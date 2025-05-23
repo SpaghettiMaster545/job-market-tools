@@ -11,6 +11,14 @@ from ..db_schema.database import(
 from ..services.offer_ingest import create_offer
 from .base import BaseScraper
 
+from contextlib import nullcontext
+
+# ─────────── optional progress bar ───────────
+try:
+    from tqdm import tqdm              # lightweight, 0-dep
+except ModuleNotFoundError:            # keep scraper runnable without it
+    tqdm = None
+
 class ResumablePagedScraper(BaseScraper):
     """
     Sub-classes only have to provide three trivial methods:
@@ -107,10 +115,26 @@ class ResumablePagedScraper(BaseScraper):
             else:
                 lo = mid + 1
 
-        # -------- ingest all pages *newer* than the duplicate page
-        for page in range(first_dup_page - 1, 0, -1):
-            self._log("Ingesting historical page {p}", p=page)
-            self._ingest_page(page)
+        pages_to_ingest = range(first_dup_page - 1, 0, -1)   # newest → oldest
+
+        # pick iterator: tqdm progress bar if available & verbose, else plain range
+        iterator = (
+            tqdm(
+                pages_to_ingest,
+                unit       = "page",
+                desc       = f"{self.config.get('name','scraper')} backfill",
+                colour     = "cyan",              # ignored in non-TTY
+                dynamic_ncols = True,             # auto width
+                leave      = False,               # clear when done
+            )
+            if self.verbose and tqdm
+            else pages_to_ingest
+        )
+
+        # tqdm is a context manager → close() is automatic
+        with (iterator if tqdm and self.verbose else nullcontext(iterator)) as it:
+            for page in it:
+                self._ingest_page(page)
 
         # we are caught up – flip to monitor mode
         self._save_state(self._state.last_uid, self._state.last_seen_at, mode="monitor")
